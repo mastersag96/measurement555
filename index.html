@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ควิซ: เครื่องวัดไฟฟ้า (Electronic Instrumentation)</title>
+<style>
+:root{
+  --bg:#f6f5f2; --card:#ffffff; --ink:#1e1b16; --sub:#6b645a;
+  --accent:#b8622b; --accent-ink:#ffffff; --line:#e6e1d8;
+  --good:#3f7d4f; --bad:#b5432f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1b1815; --card:#26221d; --ink:#f1ece3; --sub:#b3aa9c;
+    --accent:#e08a49; --accent-ink:#1b1815; --line:#3a352c;
+    --good:#7fbf8f; --bad:#e08072;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1b1815; --card:#26221d; --ink:#f1ece3; --sub:#b3aa9c;
+  --accent:#e08a49; --accent-ink:#1b1815; --line:#3a352c;
+  --good:#7fbf8f; --bad:#e08072;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Sarabun","Noto Sans Thai",system-ui,-apple-system,sans-serif;
+  min-height:100%;
+  display:flex; justify-content:center;
+}
+.wrap{width:100%; max-width:620px; padding:24px 16px 48px;}
+h1{font-size:1.3rem; margin:4px 0 2px;}
+.sub{color:var(--sub); font-size:0.92rem; margin-bottom:18px;}
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:14px;
+  padding:20px; margin-bottom:16px;
+}
+.progress{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
+.bar{flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden;}
+.bar > div{height:100%; background:var(--accent); width:0%; transition:width .25s;}
+.qnum{font-size:0.85rem; color:var(--sub); white-space:nowrap;}
+.qtext{font-size:1.05rem; line-height:1.5; margin-bottom:16px; font-weight:600;}
+.opt{
+  display:block; width:100%; text-align:left; padding:12px 14px; margin-bottom:10px;
+  border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--ink);
+  font-family:inherit; font-size:0.98rem; cursor:pointer; transition:border-color .15s, background .15s;
+}
+.opt:hover{border-color:var(--accent);}
+.opt.correct{border-color:var(--good); background:color-mix(in srgb, var(--good) 15%, transparent);}
+.opt.wrong{border-color:var(--bad); background:color-mix(in srgb, var(--bad) 15%, transparent);}
+.opt:disabled{cursor:default;}
+.explain{
+  margin-top:12px; padding:12px 14px; border-radius:10px; font-size:0.92rem; line-height:1.5;
+  background:var(--bg); border:1px solid var(--line); display:none;
+}
+.explain.show{display:block;}
+.verdict{font-weight:700; margin-bottom:4px;}
+.verdict.good{color:var(--good);} .verdict.bad{color:var(--bad);}
+.navrow{display:flex; justify-content:flex-end; margin-top:16px;}
+button.next{
+  background:var(--accent); color:var(--accent-ink); border:none; border-radius:10px;
+  padding:11px 22px; font-size:0.98rem; font-weight:600; cursor:pointer; opacity:0.4; pointer-events:none;
+}
+button.next.ready{opacity:1; pointer-events:auto;}
+.result{text-align:center;}
+.result .score{font-size:2.4rem; font-weight:700; color:var(--accent); margin:8px 0;}
+.result p{color:var(--sub);}
+button.restart{
+  margin-top:14px; background:transparent; color:var(--accent); border:1px solid var(--accent);
+  border-radius:10px; padding:10px 20px; font-size:0.95rem; cursor:pointer; font-weight:600;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ควิซ: เครื่องวัดไฟฟ้า</h1>
+  <div class="sub">Electronic Instrumentation — สรุปแนวข้อสอบจากสมุดโน้ต</div>
+  <div id="app"></div>
+</div>
+
+<script>
+const QUESTIONS = [
+{q:"จากรูปวงจร Rsh (shunt) ต่อขนานกับ PMMC มีหน้าที่ทำอะไร?",
+ opts:["เพิ่มกระแสไหลเข้า PMMC","ขยายพิสัยในการวัดกระแสให้ PMMC","ป้องกันกระแสลัดวงจร","ลดกระแสเต็มสเกลของ PMMC"],
+ correct:1, explain:"Rsh ต่อขนานกับ PMMC เพื่อรับกระแสส่วนเกิน ทำให้ขยายพิสัย (range) การวัดกระแสของ PMMC ได้กว้างขึ้น"},
+
+{q:"Rm = 20 Ω, Im = 0.8 mA, กระแสเต็มสเกลที่ต้องการวัด I = 30 mA จงหาค่า Rsh",
+ opts:["0.25 Ω","0.45 Ω","0.54 Ω","1.20 Ω"],
+ correct:2, explain:"Rsh = (Im × Rm)/(I − Im) = (0.8mA × 20Ω)/(30mA − 0.8mA) = 16/29.2 ≈ 0.54 Ω"},
+
+{q:"ถ้าผู้ผลิตต้องการขยายพิสัยการวัดแรงดันไฟ (มาตรวัดที่มี PMMC) ให้กว้างขึ้น ต้องทำอย่างไร?",
+ opts:["นำตัวต้านทานค่าต่ำ มาต่อขนานกับ PMMC","นำตัวต้านทานค่าสูง มาต่ออนุกรมกับ PMMC","นำตัวต้านทานค่าต่ำ มาต่ออนุกรมกับ PMMC","นำตัวต้านทานค่าสูง มาต่อขนานกับ PMMC"],
+ correct:1, explain:"สำหรับโวลต์มิเตอร์ ต้องต่อตัวต้านทานคูณ (multiplier) ค่าความต้านทานสูง อนุกรมกับ PMMC เพื่อขยายพิสัยแรงดัน"},
+
+{q:"ในวงจรขยายแรงดันเอซี (PMMC + วงจรเรียงกระแส) Blocking capacitor ทำหน้าที่อะไร?",
+ opts:["ไม่ให้สัญญาณรบกวนผ่านไปถึงวงจรขยาย","ไม่ให้ส่วนประกอบดีซี (DC) ของแรงดันผ่านไปถึงวงจรขยาย","ไม่ให้ส่วนประกอบเอซี (AC) ผ่านไปถึงวงจรขยาย","กรองฮาร์มอนิกออกจากแรงดัน"],
+ correct:1, explain:"Blocking capacitor กันไม่ให้องค์ประกอบไฟตรง (DC component) ของสัญญาณผ่านเข้าสู่วงจรขยาย ให้เหลือแต่ AC"},
+
+{q:"จุดเด่นของอุปกรณ์วัด PMMC ที่ใช้แถบตึง (taut band) คือข้อใด?",
+ opts:["ทำให้อุปวัด PMMC มีความไวคงที่ตลอดพิสัย","ทนต่อภาระโหลดเกิน","ทนทานต่อการสั่นสะเทือน","ราคาถูกกว่าแบบสปริง"],
+ correct:0, explain:"แถบตึง (taut band) ช่วยรักษาความไว (sensitivity) ของ PMMC ให้คงที่ตลอดย่านการวัด"},
+
+{q:"เซลล์ Weston แบบไม่อิ่มตัว (unsaturated) ใช้เป็นมาตรฐานประเภทใด?",
+ opts:["มาตรฐานปฐมภูมิเท่านั้น","มาตรฐานทุติยภูมิเท่านั้น","มาตรฐานการทำงานและมาตรฐานทุติยภูมิ","ไม่ใช่มาตรฐานทางไฟฟ้า"],
+ correct:2, explain:"เซลล์ Weston แบบไม่อิ่มตัวถูกใช้เป็นทั้งมาตรฐานการทำงาน (working standard) และมาตรฐานทุติยภูมิ ไม่ใช่มาตรฐานปฐมภูมิ"},
+
+{q:"Cadmium amalgam ในเซลล์ Weston แบบอิ่มตัว มีสัดส่วน Cadmium ผสมอยู่กี่%?",
+ opts:["5%","10%","15%","20%"],
+ correct:1, explain:"อิเล็กโทรดลบของเซลล์ Weston ทำจาก Cadmium amalgam ที่มี Cadmium ผสมอยู่ 10%"},
+
+{q:"มาตรวัดกระแสไฟฟ้าสลับย่านความถี่วิทยุ (RF ammeter) ชนิดใดมีความไวมากที่สุด?",
+ opts:["Contact","Mutual","Bridge","Separate heater"],
+ correct:2, explain:"RF ammeter ชนิด Bridge มีความไวมากที่สุด ส่วนชนิด Separate heater มีความไวน้อยที่สุด"},
+
+{q:"เมื่อพิจารณามาตรวัดค่าความต้านทานแบบอนุกรม (series-type ohmmeter) ข้อใดถูกต้อง?",
+ opts:["ถ้า Rx = R1 + (R2//Rm) เข็มจะหมุนออกจากตำแหน่งเริ่มต้นและหยุดที่กลางสเกล","กระแสที่ไหลผ่าน Rx ไม่มีผลต่อค่าที่อ่านได้","การวัดค่า Rx ไม่ต้องใช้แบตเตอรี่","ขีดสเกลแต่ละขีดมีระยะห่างเท่ากันเสมอ"],
+ correct:0, explain:"เมื่อ Rx เท่ากับความต้านทานครึ่งสเกล (R1 + R2//Rm) เข็มจะเบี่ยงไปหยุดสนิทที่กึ่งกลางสเกลพอดี"},
+
+{q:"เมื่อพิจารณามาตรวัดค่าความต้านทานแบบขนาน (shunt-type ohmmeter) ตัวต้านทาน R1 ทำหน้าที่อะไร?",
+ opts:["เพิ่มพิสัยการวัดค่าความต้านทาน","ป้องกันกระแสไฟฟ้าที่มากเกินไปไหลผ่าน PMMC","ทำให้แบตเตอรี่ใช้งานได้นานขึ้น","เพิ่มความแม่นยำของค่าที่อ่านได้"],
+ correct:1, explain:"R1 ในวงจรชันท์โอห์มมิเตอร์ ทำหน้าที่จำกัด/ป้องกันไม่ให้กระแสไหลผ่าน PMMC มากเกินไป โดยเฉพาะเมื่อ Rx = 0"},
+
+{q:"มาตรวัดแรงดันเอซีที่มี PMMC วงจรเรียงกระแสเต็มคลื่น (full-wave) เทียบกับครึ่งคลื่น (half-wave) ข้อใดถูก?",
+ opts:["ครึ่งคลื่นให้ค่าที่อ่านได้แม่นยำกว่า","เต็มคลื่นให้ค่าที่อ่านได้มีความถูกต้องมากกว่า","ทั้งสองแบบให้ผลเหมือนกันทุกประการ","เต็มคลื่นใช้ไดโอดน้อยกว่าครึ่งคลื่น"],
+ correct:1, explain:"วงจรเรียงกระแสเต็มคลื่น (full-wave) ใช้สัญญาณทั้งสองครึ่งไซเคิล จึงให้ค่าที่อ่านได้มีความถูกต้อง/แม่นยำกว่าครึ่งคลื่น"},
+
+{q:"อุปกรณ์ที่ใช้ปรับแก้ตำแหน่งเริ่มต้นของเข็มชี้ (zero) ใน PMMC คือข้อใด?",
+ opts:["Counter weight","Magnetic shunt","Y-member","Control spring"],
+ correct:2, explain:"Y-member เป็นอุปกรณ์ที่ใช้ปรับตั้งตำแหน่งศูนย์เริ่มต้นของเข็มชี้ใน PMMC"},
+
+{q:"หลักการหาค่าแอมแปร์สัมบูรณ์ (absolute ampere) ได้จากอะไร?",
+ opts:["การสมดุลของกระแสไฟฟ้า","ความต่างศักย์ของกระแสไฟฟ้าที่ไหลผ่านขดลวด 2 ชุด","ทฤษฎีทางแม่เหล็กไฟฟ้าเรื่องแรงดันไฟฟ้าที่สร้างหรือเหนี่ยวนำ","ค่าความต้านทานมาตรฐาน"],
+ correct:0, explain:"แอมแปร์สัมบูรณ์นิยามจากการสมดุลของแรงที่กระทำระหว่างกระแสไฟฟ้าในตัวนำ (การสมดุลของกระแสไฟฟ้า)"},
+
+{q:"ขดลวดเคลื่อนที่สองชุดของมาตรวัดตัวประกอบกำลัง (แบบขดลวดไขว้) วางทำมุมกี่องศา?",
+ opts:["45°","60°","90°","120°"],
+ correct:2, explain:"ขดลวดเคลื่อนที่ทั้งสองชุด (crossed-coil) วางตั้งฉากกัน คือทำมุม 90 องศา"},
+
+{q:"ตามมาตรฐานทางไฟฟ้า 1 แอมแปร์ คือกระแสคงที่ที่ไหลผ่านตัวนำสองเส้นขนานกัน แล้วเกิดแรงกระทำต่อตัวนำทั้งสองเท่าใด (ต่อความยาว)?",
+ opts:["2×10⁻⁷ N/cm","2×10⁻⁷ N/m","1×10⁻⁷ N/cm","1 N/cm"],
+ correct:0, explain:"1 แอมแปร์ ให้แรงกระทำต่อตัวนำขนานสองเส้นเท่ากับ 2×10⁻⁷ นิวตันต่อเซนติเมตร"},
+
+{q:"อุปกรณ์ขยายพิสัยการวัดแบบ Array of shunt ถ้าค่าความต้านทานของชันท์แต่ละตัวเท่ากัน จะส่งผลอย่างไร?",
+ opts:["กระแสไหลผ่านชันท์เท่ากันทุกย่านความถี่","กระแสไหลผ่านชันท์เท่ากันเฉพาะย่านความถี่ต่ำ","กระแสไหลผ่านชันท์เท่ากันเฉพาะย่านความถี่สูง","กระแสไหลผ่านชันท์ไม่เท่ากันเลยทุกย่านความถี่"],
+ correct:1, explain:"เมื่อค่าความต้านทานของชันท์แต่ละตัวเท่ากัน (ไม่ได้ออกแบบชดเชยความถี่) กระแสจะไหลผ่านเท่ากันเฉพาะย่านความถี่ต่ำเท่านั้น"},
+
+{q:"ตัวเหนี่ยวนำมาตรฐาน (standard inductor) ที่ถูกต้องตามมาตรฐาน ควรมีความแม่นยำเท่าใด?",
+ opts:["0.1%","0.2%","0.3%","0.4%"],
+ correct:0, explain:"ตัวเหนี่ยวนำมาตรฐานที่มีความเที่ยงตรงคงที่ ต้องมีความแม่นยำ (accuracy) 0.1% ที่ความถี่ที่ระบุไว้"},
+
+{q:"หลักการสอบเทียบมาตรฐาน (calibrate) ของมาตรวัตต์-ชั่วโมง จะสอบเทียบที่สภาวะโหลดเบาเท่ากับเท่าใดของพิกัด?",
+ opts:["0%","5%","10%","20%"],
+ correct:2, explain:"การสอบเทียบมาตรวัตต์-ชั่วโมงจะทำที่สภาวะโหลดเบา คือ 10% ของพิกัด"},
+
+{q:"ตัวเก็บประจุมาตรฐานปฐมภูมิ (primary standard capacitor) เป็นแบบใด?",
+ opts:["Bank of air capacitors","Ceramic capacitors","Electrolytic capacitors","Mica capacitors"],
+ correct:0, explain:"ตัวเก็บประจุมาตรฐานปฐมภูมิสร้างจากชุดตัวเก็บประจุอากาศ (bank of air capacitors) เพราะมีความเสถียรสูง"}
+];
+
+let current = 0, score = 0, answered = false;
+const app = document.getElementById('app');
+
+function render(){
+  if(current >= QUESTIONS.length){ renderResult(); return; }
+  answered = false;
+  const item = QUESTIONS[current];
+  const pct = Math.round((current/QUESTIONS.length)*100);
+  app.innerHTML = `
+    <div class="progress">
+      <div class="qnum">ข้อ ${current+1}/${QUESTIONS.length}</div>
+      <div class="bar"><div style="width:${pct}%"></div></div>
+    </div>
+    <div class="card">
+      <div class="qtext">${item.q}</div>
+      <div id="opts"></div>
+      <div class="explain" id="explain"></div>
+      <div class="navrow"><button class="next" id="nextBtn">${current === QUESTIONS.length-1 ? 'ดูผลคะแนน' : 'ข้อถัดไป'}</button></div>
+    </div>
+  `;
+  const optsEl = document.getElementById('opts');
+  item.opts.forEach((text, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = text;
+    b.onclick = () => selectAnswer(i);
+    optsEl.appendChild(b);
+  });
+  document.getElementById('nextBtn').onclick = () => { current++; render(); };
+}
+
+function selectAnswer(i){
+  if(answered) return;
+  answered = true;
+  const item = QUESTIONS[current];
+  const buttons = document.querySelectorAll('.opt');
+  buttons.forEach((b, idx) => {
+    b.disabled = true;
+    if(idx === item.correct) b.classList.add('correct');
+    else if(idx === i) b.classList.add('wrong');
+  });
+  const ok = (i === item.correct);
+  if(ok) score++;
+  const ex = document.getElementById('explain');
+  ex.classList.add('show');
+  ex.innerHTML = `<div class="verdict ${ok?'good':'bad'}">${ok ? 'ถูกต้อง!' : 'ยังไม่ถูก'}</div>${item.explain}`;
+  document.getElementById('nextBtn').classList.add('ready');
+}
+
+function renderResult(){
+  const pct = Math.round((score/QUESTIONS.length)*100);
+  app.innerHTML = `
+    <div class="card result">
+      <div class="qnum">สรุปผล</div>
+      <div class="score">${score} / ${QUESTIONS.length}</div>
+      <p>ทำถูก ${pct}%</p>
+      <button class="restart" id="restartBtn">ทำใหม่อีกครั้ง</button>
+    </div>
+  `;
+  document.getElementById('restartBtn').onclick = () => { current = 0; score = 0; render(); };
+}
+
+render();
+</script>
+</body>
+</html>
